@@ -1,24 +1,14 @@
 # app/services/response_builder.py
 
-import re
-
-
 # ---------------------------------------------------
-# Extract Recommendations
+# Extract Recommendation Names
 # ---------------------------------------------------
 
-def extract_recommendations(
-
-    llm_response,
-
-    retrieved_assessments
+def extract_recommendation_names(
+    llm_response
 ):
 
     recommendations = []
-
-    # -----------------------------------
-    # Find Structured Recommendation Block
-    # -----------------------------------
 
     marker = "RECOMMENDED_ASSESSMENTS:"
 
@@ -30,13 +20,9 @@ def extract_recommendations(
         llm_response.split(marker)[-1]
     )
 
-    lines = recommendation_block.split("\n")
-
-    extracted_names = []
-
-    # -----------------------------------
-    # Extract Recommendation Names
-    # -----------------------------------
+    lines = recommendation_block.split(
+        "\n"
+    )
 
     for line in lines:
 
@@ -44,133 +30,232 @@ def extract_recommendations(
 
         if line.startswith("-"):
 
-            assessment_name = (
+            recommendation = (
                 line.replace("-", "")
                 .strip()
             )
 
-            if assessment_name:
+            if recommendation:
 
-                extracted_names.append(
-                    assessment_name
+                recommendations.append(
+                    recommendation
                 )
 
-    # -----------------------------------
-    # Match Against Retrieved Assessments
-    # -----------------------------------
-
-    for extracted_name in extracted_names:
-
-        for assessment in retrieved_assessments:
-
-            catalog_name = assessment.get(
-                "name",
-                ""
-            )
-
-            if not catalog_name:
-                continue
-
-            # -----------------------------------
-            # Exact Match
-            # -----------------------------------
-
-            if (
-
-                catalog_name.lower()
-                == extracted_name.lower()
-
-            ):
-
-                test_types = assessment.get(
-                    "test_types",
-                    []
-                )
-
-                # -----------------------------------
-                # Extract Test Type
-                # -----------------------------------
-
-                if (
-                    isinstance(test_types, list)
-                    and len(test_types) > 0
-                ):
-
-                    first_test_type = (
-                        test_types[0]
-                    )
-
-                    if isinstance(
-                        first_test_type,
-                        dict
-                    ):
-
-                        test_type = (
-                            first_test_type.get(
-                                "name",
-                                "Unknown"
-                            )
-                        )
-
-                    else:
-
-                        test_type = str(
-                            first_test_type
-                        )
-
-                else:
-
-                    test_type = "Unknown"
-
-                recommendations.append({
-
-                    "name": catalog_name,
-
-                    "url": assessment.get(
-                        "url",
-                        ""
-                    ),
-
-                    "test_type": test_type
-                })
-
-    return recommendations[:10]
+    return recommendations
 
 
 # ---------------------------------------------------
-# Clean Reply
+# Clean Assistant Reply
+# Remove Machine Block
 # ---------------------------------------------------
 
-def clean_reply(
+def clean_reply_text(
     llm_response
 ):
-
-    # -----------------------------------
-    # Remove Hidden Recommendation Block
-    # -----------------------------------
 
     marker = "RECOMMENDED_ASSESSMENTS:"
 
     if marker in llm_response:
 
-        llm_response = (
+        return (
             llm_response.split(marker)[0]
+            .strip()
         )
 
+    return llm_response.strip()
+
+
+# ---------------------------------------------------
+# Match Recommendations To Catalog
+# ---------------------------------------------------
+
+def match_recommendations_to_catalog(
+
+    recommendation_names,
+
+    retrieved_assessments
+):
+
+    matched = []
+
+    seen = set()
+
+    # ---------------------------------------------------
+    # Build Catalog Lookup
+    # ---------------------------------------------------
+
+    catalog_lookup = {}
+
+    for assessment in retrieved_assessments:
+
+        name = (
+            assessment.get(
+                "name",
+                ""
+            )
+            .strip()
+            .lower()
+        )
+
+        if name:
+
+            catalog_lookup[name] = assessment
+
+    # ---------------------------------------------------
+    # Exact Matching
+    # ---------------------------------------------------
+
+    for recommendation_name in recommendation_names:
+
+        normalized_name = (
+            recommendation_name
+            .strip()
+            .lower()
+        )
+
+        if (
+            normalized_name
+            in catalog_lookup
+        ):
+
+            assessment = (
+                catalog_lookup[
+                    normalized_name
+                ]
+            )
+
+            assessment_name = (
+                assessment.get(
+                    "name"
+                )
+            )
+
+            if (
+
+                assessment_name
+
+                and assessment_name
+                not in seen
+
+            ):
+
+                matched.append({
+
+                    "name":
+                    assessment.get(
+                        "name"
+                    ),
+
+                    "url":
+                    assessment.get(
+                        "url"
+                    ),
+
+                    "test_type":
+                    assessment.get(
+                        "test_type",
+                        "Unknown"
+                    )
+                })
+
+                seen.add(
+                    assessment_name
+                )
+
+    return matched
+
+
+# ---------------------------------------------------
+# Remove Invalid Recommendations
+# ---------------------------------------------------
+
+def filter_valid_recommendations(
+    recommendations
+):
+
+    filtered = []
+
+    seen = set()
+
+    for recommendation in recommendations:
+
+        name = recommendation.get(
+            "name"
+        )
+
+        url = recommendation.get(
+            "url"
+        )
+
+        # -----------------------------------
+        # Basic Validation
+        # -----------------------------------
+
+        if not name:
+            continue
+
+        if not url:
+            continue
+
+        # -----------------------------------
+        # Duplicate Protection
+        # -----------------------------------
+
+        normalized_name = (
+            name.lower().strip()
+        )
+
+        if normalized_name in seen:
+            continue
+
+        seen.add(
+            normalized_name
+        )
+
+        filtered.append(
+            recommendation
+        )
+
+    return filtered
+
+
+# ---------------------------------------------------
+# Ensure Recommendation Count
+# ---------------------------------------------------
+
+def limit_recommendations(
+    recommendations,
+    minimum=5,
+    maximum=5
+):
+
     # -----------------------------------
-    # Remove Excess Newlines
+    # Remove Empty Entries
     # -----------------------------------
 
-    reply = re.sub(
+    recommendations = [
 
-        r"\n{3,}",
+        recommendation
 
-        "\n\n",
+        for recommendation in recommendations
 
-        llm_response
-    )
+        if recommendation.get("name")
+    ]
 
-    return reply.strip()
+    # -----------------------------------
+    # If Fewer Than Minimum
+    # Return Whatever Exists
+    # -----------------------------------
+
+    if len(recommendations) <= minimum:
+
+        return recommendations
+
+    # -----------------------------------
+    # Cap Maximum
+    # -----------------------------------
+
+    return recommendations[:maximum]
 
 
 # ---------------------------------------------------
@@ -179,152 +264,129 @@ def clean_reply(
 
 def determine_end_of_conversation(
 
-    conversation_state,
+    query_type,
 
     recommendations
 ):
 
     # -----------------------------------
-    # No Recommendations Yet
+    # Clarification Continues Conversation
     # -----------------------------------
 
-    if len(recommendations) == 0:
+    if query_type == "clarification":
 
         return False
 
     # -----------------------------------
-    # Latest User Query
+    # Recommendation Usually Ends
     # -----------------------------------
 
-    latest_query = (
-        conversation_state.get(
-            "latest_user_query",
-            ""
-        ).lower()
-    )
-
-    # -----------------------------------
-    # Query Type
-    # -----------------------------------
-
-    query_type = (
-        conversation_state.get(
-            "last_query_type",
-            ""
-        )
-    )
-
-    # -----------------------------------
-    # Explicit Completion Signals
-    # -----------------------------------
-
-    completion_keywords = [
-
-        "thanks",
-
-        "thank you",
-
-        "perfect",
-
-        "great",
-
-        "looks good",
-
-        "this works",
-
-        "that works",
-
-        "final shortlist",
-
-        "done",
-
-        "that's enough"
-    ]
-
-    if any(
-        keyword in latest_query
-        for keyword in completion_keywords
-    ):
+    if len(recommendations) > 0:
 
         return True
 
     # -----------------------------------
-    # Keep Conversation Open
+    # Out Of Scope
     # -----------------------------------
 
-    if query_type in [
-
-        "clarification",
-
-        "refinement",
-
-        "comparison"
-    ]:
+    if query_type == "out_of_scope":
 
         return False
 
     # -----------------------------------
-    # Default:
-    # Recommendations Provided
+    # Default
     # -----------------------------------
 
-    return True
+    return False
 
 
 # ---------------------------------------------------
-# Build Final Chat Response
+# Build Final API Response
 # ---------------------------------------------------
 
-def build_chat_response(
+def build_response(
 
     llm_response,
 
     retrieved_assessments,
 
-    conversation_state
+    query_type
 ):
 
-    # -----------------------------------
-    # Structured Recommendations
-    # -----------------------------------
+    # ---------------------------------------------------
+    # Extract Recommendation Names
+    # ---------------------------------------------------
+
+    recommendation_names = (
+        extract_recommendation_names(
+            llm_response
+        )
+    )
+
+    # ---------------------------------------------------
+    # Match Against Catalog
+    # ---------------------------------------------------
 
     recommendations = (
-        extract_recommendations(
+        match_recommendations_to_catalog(
 
-            llm_response,
+            recommendation_names,
 
             retrieved_assessments
         )
     )
 
-    # -----------------------------------
-    # User-Visible Reply
-    # -----------------------------------
+    # ---------------------------------------------------
+    # Final Validation
+    # ---------------------------------------------------
 
-    reply = clean_reply(
+    recommendations = (
+        filter_valid_recommendations(
+            recommendations
+        )
+    )
+
+    # ---------------------------------------------------
+    # Final Recommendation Count
+    # ---------------------------------------------------
+
+    recommendations = (
+        limit_recommendations(
+            recommendations,
+            minimum=5,
+            maximum=5
+        )
+    )
+
+    # ---------------------------------------------------
+    # Clean Assistant Reply
+    # ---------------------------------------------------
+
+    reply = clean_reply_text(
         llm_response
     )
 
-    # -----------------------------------
-    # Completion Logic
-    # -----------------------------------
+    # ---------------------------------------------------
+    # End Of Conversation
+    # ---------------------------------------------------
 
     end_of_conversation = (
         determine_end_of_conversation(
 
-            conversation_state,
+            query_type,
 
             recommendations
         )
     )
 
-    # -----------------------------------
-    # Final Structured API Response
-    # -----------------------------------
+    # ---------------------------------------------------
+    # Final API Response
+    # ---------------------------------------------------
 
-    final_response = {
+    response = {
 
-        "reply": reply,
+        "reply":
+        reply,
 
         "recommendations":
         recommendations,
@@ -333,7 +395,7 @@ def build_chat_response(
         end_of_conversation
     }
 
-    return final_response
+    return response
 
 
 # ---------------------------------------------------
@@ -342,74 +404,99 @@ def build_chat_response(
 
 if __name__ == "__main__":
 
-    sample_llm_response = """
+    sample_response = """
+Here are recommended assessments.
 
-1. OPQ Leadership Report
-Why it fits: Executive leadership profiling.
-URL: https://example.com/opq
+1. OPQ32
+Why it fits: Leadership personality assessment.
 
-2. Verify G+
-Why it fits: Cognitive reasoning.
-URL: https://example.com/verify
+2. Verify Interactive G+
+Why it fits: Cognitive reasoning assessment.
+
+3. Occupational Personality Questionnaire
+Why it fits: Behavioral fit analysis.
+
+4. Numerical Reasoning Test
+Why it fits: Analytical evaluation.
+
+5. Situational Judgement Test
+Why it fits: Decision-making assessment.
 
 RECOMMENDED_ASSESSMENTS:
-- OPQ Leadership Report
-- Verify G+
+- OPQ32
+- Verify Interactive G+
+- Occupational Personality Questionnaire
+- Numerical Reasoning Test
+- Situational Judgement Test
 """
 
-    sample_assessments = [
+    sample_catalog = [
 
         {
             "name":
-            "OPQ Leadership Report",
+            "OPQ32",
 
             "url":
-            "https://example.com/opq",
+            "https://www.shl.com/opq32",
 
-            "test_types": [
-                {
-                    "name":
-                    "Personality"
-                }
-            ]
+            "test_type":
+            "P"
         },
 
         {
             "name":
-            "Verify G+",
+            "Verify Interactive G+",
 
             "url":
-            "https://example.com/verify",
+            "https://www.shl.com/verify",
 
-            "test_types": [
-                {
-                    "name":
-                    "Cognitive"
-                }
-            ]
+            "test_type":
+            "C"
+        },
+
+        {
+            "name":
+            "Occupational Personality Questionnaire",
+
+            "url":
+            "https://www.shl.com/opq",
+
+            "test_type":
+            "P"
+        },
+
+        {
+            "name":
+            "Numerical Reasoning Test",
+
+            "url":
+            "https://www.shl.com/numerical",
+
+            "test_type":
+            "C"
+        },
+
+        {
+            "name":
+            "Situational Judgement Test",
+
+            "url":
+            "https://www.shl.com/sjt",
+
+            "test_type":
+            "B"
         }
     ]
 
-    sample_state = {
+    result = build_response(
 
-        "latest_user_query":
-        "Looks good",
+        sample_response,
 
-        "last_query_type":
-        "recommendation"
-    }
+        sample_catalog,
 
-    result = build_chat_response(
-
-        sample_llm_response,
-
-        sample_assessments,
-
-        sample_state
+        query_type="recommendation"
     )
 
     from pprint import pprint
-
-    print("\nFinal Structured Response:\n")
 
     pprint(result)

@@ -12,7 +12,7 @@ def detect_acronyms(
 ):
 
     acronyms = re.findall(
-        r'\b[A-Z]{2,}\b',
+        r"\b[A-Z]{2,}\b",
         query
     )
 
@@ -28,7 +28,10 @@ def classify_query(
     session
 ):
 
-    query_lower = query.lower().strip()
+    query_lower = (
+        query.lower()
+        .strip()
+    )
 
     # ---------------------------------------------------
     # Conversation Context
@@ -109,7 +112,13 @@ def classify_query(
 
         "termination policy",
 
-        "offer negotiation"
+        "offer negotiation",
+
+        "resignation letter",
+
+        "salary negotiation",
+
+        "offer letter"
     ]
 
     if any(
@@ -173,7 +182,15 @@ def classify_query(
 
         "reduce",
 
-        "keep only"
+        "keep only",
+
+        "replace",
+
+        "swap",
+
+        "change",
+
+        "prioritize"
     ]
 
     if (
@@ -238,7 +255,9 @@ def classify_query(
 
         "coding test",
 
-        "executive assessment"
+        "executive assessment",
+
+        "need recommendations"
     ]
 
     if any(
@@ -254,27 +273,50 @@ def classify_query(
 
     recommendation_keywords = [
 
+        # -----------------------------------
         # Roles
+        # -----------------------------------
 
         "engineer",
         "developer",
         "software",
+        "backend",
+        "frontend",
+        "fullstack",
+        "architect",
         "manager",
         "leader",
+        "leadership",
         "executive",
+        "director",
+        "cxo",
+        "vp",
         "sales",
         "graduate",
+        "analyst",
+        "consultant",
+        "operations",
+        "healthcare",
+        "admin",
 
+        # -----------------------------------
         # Purpose
+        # -----------------------------------
 
         "selection",
         "development",
         "benchmark",
+        "benchmarking",
         "hiring",
         "recruitment",
         "screening",
+        "promotion",
+        "succession",
+        "high-potential",
 
+        # -----------------------------------
         # Focus
+        # -----------------------------------
 
         "coding",
         "reasoning",
@@ -284,7 +326,14 @@ def classify_query(
         "communication",
         "stakeholder",
         "compliance",
-        "problem-solving"
+        "problem-solving",
+        "decision-making",
+        "technical",
+        "behavioral",
+        "strategic thinking",
+        "attention to detail",
+        "customer service",
+        "hipaa"
     ]
 
     recommendation_signal_count = sum([
@@ -338,7 +387,11 @@ if __name__ == "__main__":
 
         "Add personality assessments",
 
-        "What salary should I pay developers?"
+        "What salary should I pay developers?",
+
+        "Need assessments for healthcare admin hiring",
+
+        "Need executive leadership benchmarking assessments"
     ]
 
     for query in sample_queries:
@@ -368,4 +421,4 @@ if __name__ == "__main__":
         print("\nSession:")
         print(session)
 
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 70)

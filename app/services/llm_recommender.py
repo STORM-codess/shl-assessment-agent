@@ -378,7 +378,7 @@ Recommendation Rules:
 - Recommend ONLY genuinely relevant assessments.
 - Prefer quality over quantity.
 - Avoid redundant assessments with overlapping purpose.
-- Default to 3–5 recommendations unless the scenario genuinely requires more.
+- Default to 5 recommendations whenever enough relevant assessments exist.
 - Explain WHY each assessment specifically matches the hiring scenario.
 
 For each recommendation include:
