@@ -10,7 +10,7 @@ import json
 def load_catalog():
 
     with open(
-        "data/processed_catalog.json",
+        "data/processed/catalog_processed.json",
         "r",
         encoding="utf-8"
     ) as file:
