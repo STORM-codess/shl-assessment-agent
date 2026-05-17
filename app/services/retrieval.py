@@ -10,7 +10,7 @@ import json
 def load_catalog():
 
     with open(
-        "C:\Users\ASUS\shl-assessment-agent\data\processed\catalog_processed.json",
+        "data/processed/catalog_processed.json",
         "r",
         encoding="utf-8"
     ) as file:
