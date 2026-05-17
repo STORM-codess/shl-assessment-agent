@@ -98,12 +98,43 @@ def semantic_search(
     )
 
     # ---------------------------------------------------
-    # Return Top Results
+    # Return Structured Top Results
     # ---------------------------------------------------
 
     top_results = [
 
-        result["assessment"]
+        {
+
+            "name":
+            result["assessment"].get(
+                "name",
+                ""
+            ),
+
+            "description":
+            result["assessment"].get(
+                "description",
+                ""
+            ),
+
+            "category":
+            result["assessment"].get(
+                "category",
+                ""
+            ),
+
+            "url":
+            result["assessment"].get(
+                "url",
+                ""
+            ),
+
+            "test_type":
+            result["assessment"].get(
+                "test_type",
+                ""
+            )
+        }
 
         for result in scored_results
 
