@@ -4,13 +4,13 @@ import json
 
 
 # ---------------------------------------------------
-# Load Assessment Catalog
+# Load Processed Catalog
 # ---------------------------------------------------
 
 def load_catalog():
 
     with open(
-        "data/processed/catalog_processed.json",
+        "app/data/processed_catalog.json",
         "r",
         encoding="utf-8"
     ) as file:
@@ -41,7 +41,47 @@ def semantic_search(
 
     for assessment in catalog:
 
+        # ---------------------------------------------------
+        # Extract Test Type Information
+        # ---------------------------------------------------
+
+        test_types = assessment.get(
+            "test_types",
+            []
+        )
+
+        test_type_codes = " ".join([
+
+            test_type.get(
+                "code",
+                ""
+            )
+
+            for test_type in test_types
+        ])
+
+        test_type_names = " ".join([
+
+            test_type.get(
+                "name",
+                ""
+            )
+
+            for test_type in test_types
+        ])
+
+        # ---------------------------------------------------
+        # Searchable Text
+        # ---------------------------------------------------
+
         searchable_text = " ".join([
+
+            str(
+                assessment.get(
+                    "search_text",
+                    ""
+                )
+            ),
 
             str(
                 assessment.get(
@@ -57,13 +97,49 @@ def semantic_search(
                 )
             ),
 
+            " ".join(
+                assessment.get(
+                    "job_levels",
+                    []
+                )
+            ),
+
+            test_type_codes,
+
+            test_type_names,
+
             str(
                 assessment.get(
-                    "category",
+                    "duration",
                     ""
+                )
+            ),
+
+            str(
+                assessment.get(
+                    "remote",
+                    ""
+                )
+            ),
+
+            str(
+                assessment.get(
+                    "adaptive",
+                    ""
+                )
+            ),
+
+            " ".join(
+                assessment.get(
+                    "language",
+                    []
                 )
             )
         ]).lower()
+
+        # ---------------------------------------------------
+        # Keyword Match Scoring
+        # ---------------------------------------------------
 
         score = 0
 
@@ -85,7 +161,7 @@ def semantic_search(
         })
 
     # ---------------------------------------------------
-    # Sort By Score
+    # Sort By Relevance
     # ---------------------------------------------------
 
     scored_results = sorted(
@@ -98,28 +174,22 @@ def semantic_search(
     )
 
     # ---------------------------------------------------
-    # Return Structured Top Results
+    # Build Structured Results
     # ---------------------------------------------------
 
     top_results = [
 
         {
 
+            "id":
+            result["assessment"].get(
+                "id",
+                ""
+            ),
+
             "name":
             result["assessment"].get(
                 "name",
-                ""
-            ),
-
-            "description":
-            result["assessment"].get(
-                "description",
-                ""
-            ),
-
-            "category":
-            result["assessment"].get(
-                "category",
                 ""
             ),
 
@@ -129,11 +199,56 @@ def semantic_search(
                 ""
             ),
 
-            "test_type":
+            "description":
             result["assessment"].get(
-                "test_type",
+                "description",
                 ""
-            )
+            ),
+
+            "job_levels":
+            result["assessment"].get(
+                "job_levels",
+                []
+            ),
+
+            "test_types":
+            result["assessment"].get(
+                "test_types",
+                []
+            ),
+
+            "duration":
+            result["assessment"].get(
+                "duration",
+                ""
+            ),
+
+            "remote":
+            result["assessment"].get(
+                "remote",
+                ""
+            ),
+
+            "adaptive":
+            result["assessment"].get(
+                "adaptive",
+                ""
+            ),
+
+            "language":
+            result["assessment"].get(
+                "language",
+                []
+            ),
+
+            "search_text":
+            result["assessment"].get(
+                "search_text",
+                ""
+            ),
+
+            "score":
+            result["score"]
         }
 
         for result in scored_results
